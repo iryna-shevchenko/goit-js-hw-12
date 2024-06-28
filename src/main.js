@@ -42,12 +42,13 @@ async function handleFormSubmit(event) {
       message: 'Please enter image name!',
       position: 'topRight',
     });
-    return;
     hideLoader();
+    return;
   }
 
   try {
     const data = await getImages(searchQuery, currentPage);
+    hideLoader();
 
     if (data.hits.length === 0) {
       iziToast.error({
