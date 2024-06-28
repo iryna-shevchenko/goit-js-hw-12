@@ -1,3 +1,5 @@
+const galleryElement = document.querySelector('.gallery');
+
 export function renderImages(images) {
   const fragment = document.createDocumentFragment();
 
@@ -9,7 +11,7 @@ export function renderImages(images) {
   galleryElement.appendChild(fragment);
 }
 
-export function createImageCard(image) {
+function createImageCard(image) {
   const imageCardElement = document.createElement('div');
   imageCardElement.classList.add('card');
 

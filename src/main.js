@@ -1,22 +1,22 @@
-import axios from 'axios';
+
 import iziToast from 'izitoast';
 import 'izitoast/dist/css/iziToast.min.css';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import { getImages } from './js/pixabay-api';
+import { renderImages } from './js/render-functions';
 
-// import { handleFormSubmit } from './js/pixabay-api';
-// import { renderImages, reateImageCard } from './js/render-functions';
-
-const API_KEY = '44479541-afd008fbdfda4a6c986ece69f';
 const searchFormElement = document.querySelector('.search-form');
 const galleryElement = document.querySelector('.gallery');
+const loaderElement = document.querySelector('.loader');
+const loadMoreButton = document.querySelector('.load-more');
+
 const lightbox = new SimpleLightbox('.gallery a', {
   captionsData: 'alt',
   captionDelay: 250,
 });
 
-const loaderElement = document.querySelector('.loader');
-const loadMoreButton = document.querySelector('.load-more');
+
 let currentPage = 1;
 let totalHits = 0;
 let searchQuery = '';
@@ -30,7 +30,11 @@ loadMoreButton.addEventListener('click', loadMoreImages);
 
 async function handleFormSubmit(event) {
   event.preventDefault();
+  hideLoadMoreButton();
+  clearGallery();
+  currentPage = 1;
   searchQuery = event.target.querySelector('.search-input').value.trim();
+  showLoader();
 
   if (!searchQuery) {
     iziToast.warning({
@@ -39,28 +43,11 @@ async function handleFormSubmit(event) {
       position: 'topRight',
     });
     return;
+    hideLoader();
   }
 
-  clearGallery();
-  showLoader();
-  hideLoadMoreButton();
-
   try {
-    const response = await axios.get('https://pixabay.com/api/', {
-      params: {
-        key: API_KEY,
-        q: searchQuery,
-        image_type: 'photo',
-        orientation: 'horizontal',
-        safesearch: true,
-        page: currentPage,
-        per_page: 40,
-      },
-    });
-
-    hideLoader();
-
-    const data = response.data;
+    const data = await getImages(searchQuery, currentPage);
 
     if (data.hits.length === 0) {
       iziToast.error({
@@ -75,17 +62,14 @@ async function handleFormSubmit(event) {
     imagesLoaded = data.hits.length;
     renderImages(data.hits);
     lightbox.refresh();
+    showLoadMoreButton();
 
     iziToast.info({
       message: `We found ${totalHits} images.`,
       position: 'topRight',
     });
 
-    if (totalHits > 15) {
-      showLoadMoreButton();
-    }
   } catch (error) {
-    console.error('Error fetching images:', error);
     hideLoader();
     iziToast.error({
       message: 'Failed to fetch images. Please try again later.',
@@ -94,35 +78,6 @@ async function handleFormSubmit(event) {
   }
 }
 
-function renderImages(images) {
-  const fragment = document.createDocumentFragment();
-
-  images.forEach(image => {
-    const imageCardElement = createImageCard(image);
-    fragment.appendChild(imageCardElement);
-  });
-
-  galleryElement.appendChild(fragment);
-}
-
-function createImageCard(image) {
-  const imageCardElement = document.createElement('div');
-  imageCardElement.classList.add('card');
-
-  imageCardElement.innerHTML = `
-    <a class="gallery-link" href="${image.largeImageURL}">
-      <img class="card-image" src="${image.webformatURL}" alt="${image.tags}" loading="lazy">
-    </a>
-    <div class="card-info">
-      <p class="card-text"><b>Likes:</b> ${image.likes}</p>
-      <p class="card-text"><b>Views:</b> ${image.views}</p>
-      <p class="card-text"><b>Comments:</b> ${image.comments}</p>
-      <p class="card-text"><b>Downloads:</b> ${image.downloads}</p>
-    </div>
-  `;
-
-  return imageCardElement;
-}
 
 function clearGallery() {
   galleryElement.innerHTML = '';
@@ -135,21 +90,9 @@ async function loadMoreImages() {
   hideLoadMoreButton();
 
   try {
-    const response = await axios.get('https://pixabay.com/api/', {
-      params: {
-        key: API_KEY,
-        q: searchQuery,
-        image_type: 'photo',
-        orientation: 'horizontal',
-        safesearch: true,
-        page: currentPage + 1,
-        per_page: 15,
-      },
-    });
+    const data = await getImages(searchQuery, currentPage);
 
     hideLoader();
-
-    const data = response.data;
 
     if (data.hits.length === 0) {
       return;
